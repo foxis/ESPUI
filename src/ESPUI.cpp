@@ -15,17 +15,17 @@
 // ################# Spiffs functions
 #if defined(ESP32)
 void listDir(const char *dirname, uint8_t levels) {
-  Serial.printf("Listing directory: %s\n", dirname);
+  ESPUI.log("Listing directory: " + String(dirname));
 
   File root = SPIFFS.open(dirname);
 
   if (!root) {
-    Serial.println("Failed to open directory");
+    ESPUI.log("Failed to open directory");
     return;
   }
 
   if (!root.isDirectory()) {
-    Serial.println("Not a directory");
+    ESPUI.log("Not a directory");
     return;
   }
 
@@ -33,16 +33,13 @@ void listDir(const char *dirname, uint8_t levels) {
 
   while (file) {
     if (file.isDirectory()) {
-      Serial.print("  DIR : ");
-      Serial.println(file.name());
+      ESPUI.log("  DIR : " + String(file.name()));
       if (levels) {
         listDir(file.name(), levels - 1);
       }
     } else {
-      Serial.print("  FILE: ");
-      Serial.print(file.name());
-      Serial.print("  SIZE: ");
-      Serial.println(file.size());
+      ESPUI.log("  FILE: " + String(file.name()));
+      ESPUI.log("  SIZE: " + String(file.size()));
     }
 
     file = root.openNextFile();
@@ -52,15 +49,13 @@ void listDir(const char *dirname, uint8_t levels) {
 
 void listDir(const char *dirname, uint8_t levels) {
   // ignoring levels for esp8266
-  Serial.printf("Listing directory: %s\n", dirname);
+  ESPUI.log("Listing directory: " + String(dirname));
 
   String str = "";
   Dir dir = SPIFFS.openDir("/");
   while (dir.next()) {
-    Serial.print("  FILE: ");
-    Serial.print(dir.fileName());
-    Serial.print("  SIZE: ");
-    Serial.println(dir.fileSize());
+    ESPUI.log("  FILE: " + String(dir.fileName()));
+    ESPUI.log("  SIZE: " + String(dir.fileSize()));
   }
 }
 
@@ -68,50 +63,50 @@ void listDir(const char *dirname, uint8_t levels) {
 
 void ESPUIClass::list() {
   if (!SPIFFS.begin()) {
-    Serial.println("SPIFFS Mount Failed");
+    ESPUI.log("SPIFFS Mount Failed");
     return;
   }
   listDir("/", 1);
 #if defined(ESP32)
-  Serial.println(SPIFFS.totalBytes());
-  Serial.println(SPIFFS.usedBytes());
+  ESPUI.log(String(SPIFFS.totalBytes()));
+  ESPUI.log(String(SPIFFS.usedBytes()));
 #else
   FSInfo fs_info;
   SPIFFS.info(fs_info);
 
-  Serial.println(fs_info.totalBytes);
-  Serial.println(fs_info.usedBytes);
+  ESPUI.log(String(fs_info.totalBytes));
+  ESPUI.log(String(fs_info.usedBytes));
 #endif
 }
 
 void deleteFile(const char *path) {
   Serial.print(SPIFFS.exists(path));
   if (!SPIFFS.exists(path)) {
-    Serial.printf("File: %s does not exist, not deleting\n", path);
+    ESPUI.log("File: " + String(path) + " does not exist, not deleting");
     return;
   }
 
-  Serial.printf("Deleting file: %s\n", path);
+  ESPUI.log("Deleting file: " + String(path));
 
   if (SPIFFS.remove(path)) {
-    Serial.println("File deleted");
+    ESPUI.log("File deleted");
   } else {
-    Serial.println("Delete failed");
+    ESPUI.log("Delete failed");
   }
 }
 
 void writeFile(const char *path, const char *data) {
-  Serial.printf("Writing file: %s\n", path);
+  ESPUI.log("Writing file: " + String(path));
 
   File file = SPIFFS.open(path, FILE_WRITE);
   if (!file) {
-    Serial.println("Failed to open file for writing");
+    ESPUI.log("Failed to open file for writing");
     return;
   }
   if (file.print(FPSTR(data))) {
-    Serial.println("File written");
+    ESPUI.log("File written");
   } else {
-    Serial.println("Write failed");
+    ESPUI.log("Write failed");
   }
   file.close();
 }
@@ -121,20 +116,20 @@ void writeFile(const char *path, const char *data) {
 void ESPUIClass::prepareFileSystem() {
   // this function should only be used once
 
-  Serial.println("About to prepare filesystem...");
+  log("About to prepare filesystem...");
 
 #if defined(ESP32)
   SPIFFS.format();
   if (!SPIFFS.begin(true)) {
-    Serial.println("SPIFFS Mount Failed");
+    log("SPIFFS Mount Failed");
     return;
   }
   listDir("/", 1);
-  Serial.println("SPIFFS Mount ESP32 Done");
+  log("SPIFFS Mount ESP32 Done");
 #else
   SPIFFS.format();
   SPIFFS.begin();
-  Serial.println("SPIFFS Mount ESP8266 Done");
+  log("SPIFFS Mount ESP8266 Done");
 #endif
 
   // TODO: This is a workaround, have to find out why SPIFFS on ESP32 behaves
@@ -150,7 +145,7 @@ void ESPUIClass::prepareFileSystem() {
   deleteFile("/js/slider.js");
   */
 
-  Serial.println("Cleanup done");
+  log("Cleanup done");
 
   // Now write
   writeFile("/index.htm", HTML_INDEX);
@@ -162,7 +157,7 @@ void ESPUIClass::prepareFileSystem() {
   writeFile("/js/controls.js", JS_CONTROLS);
   writeFile("/js/slider.js", JS_SLIDER);
 
-  Serial.println("Done Initializing filesystem :-)");
+  log("Done Initializing filesystem :-)");
 
 #if defined(ESP32)
   listDir("/", 1);
@@ -176,19 +171,13 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
                AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch (type) {
   case WS_EVT_DISCONNECT:
-    if (debug)
-      Serial.printf("Disconnected!\n");
+    ESPUI.log("Disconnected!\n");
     break;
   case WS_EVT_CONNECT: {
-    if (debug) {
-      Serial.print("Connected: ");
-      Serial.println(client->id());
-    }
+    ESPUI.log("Connected: " + String(client->id()));
 
     ESPUI.jsonDom(client);
-    if (debug) {
-      Serial.println("JSON Data Sent to Client!");
-    }
+    ESPUI.log("JSON Data Sent to Client!");
   } break;
   case WS_EVT_DATA:
     String msg = "";
@@ -197,8 +186,7 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
     }
     int id = msg.substring(msg.lastIndexOf(':') + 1).toInt();
     if (id >= ESPUI.cIndex) {
-      if (debug)
-        Serial.println("Maleformated id in websocket message");
+      ESPUI.log("Malformated id in websocket message");
       return;
     }
     Control *c =
@@ -246,8 +234,7 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 
 void ESPUIClass::label(const char *label, int color, String value) {
   if (labelExists(label)) {
-    if (debug)
-      Serial.println("UI ERROR: Element " + String(label) +
+    log("UI ERROR: Element " + String(label) +
                      " exists, skipping creating element!");
     return;
   }
@@ -270,8 +257,7 @@ void ESPUIClass::label(const char *label, int color, String value) {
 void ESPUIClass::slider(const char *label, void (*callBack)(Control, int),
                         int color, String value) {
   if (labelExists(label)) {
-    if (debug)
-      Serial.println("UI ERROR: Element " + String(label) +
+    log("UI ERROR: Element " + String(label) +
                      " exists, skipping creating element!");
     return;
   }
@@ -293,8 +279,7 @@ void ESPUIClass::slider(const char *label, void (*callBack)(Control, int),
 void ESPUIClass::button(const char *label, void (*callBack)(Control, int),
                         int color, String value) {
   if (labelExists(label)) {
-    if (debug)
-      Serial.println("UI ERROR: Element " + String(label) +
+    log("UI ERROR: Element " + String(label) +
                      " exists, skipping creating element!");
     return;
   }
@@ -318,8 +303,7 @@ void ESPUIClass::button(const char *label, void (*callBack)(Control, int),
 void ESPUIClass::switcher(const char *label, bool startState,
                           void (*callBack)(Control, int), int color) {
   if (labelExists(label)) {
-    if (debug)
-      Serial.println("UI ERROR: Element " + String(label) +
+    log("UI ERROR: Element " + String(label) +
                      " exists, skipping creating element!");
     return;
   }
@@ -338,8 +322,7 @@ void ESPUIClass::switcher(const char *label, bool startState,
 void ESPUIClass::pad(const char *label, bool center,
                      void (*callBack)(Control, int), int color) {
   if (labelExists(label)) {
-    if (debug)
-      Serial.println("UI ERROR: Element " + String(label) +
+    log("UI ERROR: Element " + String(label) +
                      " exists, skipping creating element!");
     return;
   }
@@ -369,15 +352,13 @@ void ESPUIClass::print(int id, String value) {
     root.printTo(json);
     this->ws->textAll(json);
   } else {
-    if (debug)
-      Serial.println(String("Error: ") + String(id) + String(" is no label"));
+    log(String("Error: ") + String(id) + String(" is no label"));
   }
 }
 
 void ESPUIClass::print(String label, String value) {
   if (!labelExists(label)) {
-    if (debug)
-      Serial.println("UI ERROR: Element does not " + String(label) +
+    log("UI ERROR: Element does not " + String(label) +
                      " exist, cannot update!");
     return;
   }
@@ -396,8 +377,7 @@ void ESPUIClass::updateSwitcher(int id, bool nValue, int clientId) {
     root.printTo(json);
     textThem(json, clientId);
   } else {
-    if (debug)
-      Serial.println(String("Error: ") + String(id) +
+    log(String("Error: ") + String(id) +
                      String(" is no switcher"));
   }
 }
@@ -414,15 +394,13 @@ void ESPUIClass::updateSlider(int id, int nValue, int clientId) {
     root.printTo(json);
     textThem(json, clientId);
   } else {
-    if (debug)
-      Serial.println(String("Error: ") + String(id) + String(" is no slider"));
+    log(String("Error: ") + String(id) + String(" is no slider"));
   }
 }
 
 void ESPUIClass::updateSwitcher(String label, bool nValue, int clientId) {
   if (!labelExists(label)) {
-    if (debug)
-      Serial.println("UI ERROR: Element does not " + String(label) +
+    log("UI ERROR: Element does not " + String(label) +
                      " exist, cannot update!");
     return;
   }
@@ -482,20 +460,24 @@ void ESPUIClass::jsonDom(AsyncWebSocketClient *client) {
 }
 
 void ESPUIClass::begin(const char *_title) {
+	begin(_title, true);
+}
 
+void ESPUIClass::begin(const char *_title, bool debug) {
+  is_debug = debug;
   ui_title = _title;
   server = new AsyncWebServer(80);
   ws = new AsyncWebSocket("/ws");
 
   if (!SPIFFS.begin()) {
-    Serial.println("SPIFFS Mount Failed, PLEASE CHECK THE README ON HOW TO "
+    log("SPIFFS Mount Failed, PLEASE CHECK THE README ON HOW TO "
                    "PREPARE YOUR ESP!!!!!!!");
     return;
   }
   listDir("/", 1);
 
   if (!SPIFFS.exists("/index.htm")) {
-    Serial.println("Please read the README!!!!!!!, Make sure to "
+    log("Please read the README!!!!!!!, Make sure to "
                    "ESPUI.prepareFileSystem() once in an empty sketch");
     return;
   }
@@ -513,8 +495,13 @@ void ESPUIClass::begin(const char *_title) {
       [](AsyncWebServerRequest *request) { request->send(404); });
 
   server->begin();
-  if (debug)
-    Serial.println("UI Initialized");
+  log("UI Initialized");
+}
+
+void ESPUIClass::log(String str)
+{
+	if (is_debug)
+		Serial.println(str);
 }
 
 ESPUIClass ESPUI;

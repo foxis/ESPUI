@@ -1,8 +1,6 @@
 #ifndef ESPUI_h
 #define ESPUI_h
 
-#define debug true
-
 #include "Arduino.h"
 #include "ArduinoJson.h"
 #include "FS.h"
@@ -86,7 +84,8 @@ typedef struct Control {
 class ESPUIClass {
 
 public:
-  void begin(const char *_title); // Setup servers and page
+	void begin(const char *_title); // Setup servers and page
+  void begin(const char *_title, bool debug); // Setup servers and page
 
   void prepareFileSystem(); // Initially preps the filesystem and loads a lot of stuff into SPIFFS
 void list();
@@ -121,9 +120,12 @@ void list();
   int getIdByLabel(String label);
   bool labelExists(String label);
 
+	void log(String str);
+
 private:
   AsyncWebServer *server;
   AsyncWebSocket *ws;
+	bool is_debug;
 };
 
 extern ESPUIClass ESPUI;
