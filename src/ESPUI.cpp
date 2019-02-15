@@ -474,7 +474,8 @@ void ESPUIClass::begin(const char *_title, bool debug) {
                    "PREPARE YOUR ESP!!!!!!!");
     return;
   }
-  listDir("/", 1);
+	if (debug)
+  	listDir("/", 1);
 
   if (!SPIFFS.exists("/index.htm")) {
     log("Please read the README!!!!!!!, Make sure to "
